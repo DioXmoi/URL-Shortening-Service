@@ -1,0 +1,80 @@
+# Operating system files
+.DS_Store
+Thumbs.db
+
+
+# Compiled files and build artifacts
+*.o
+*.a
+*.lib
+*.dll
+*.so
+*.exe
+*.obj
+*.elf
+*.out
+*.pdb
+build/
+Debug/
+Release/
+target/
+
+# IDE-specific files
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.VC.db
+*.VC.vc.db
+*.log
+*.ncb
+*.opendb
+*.aps
+*.pch
+*.opt
+*.ilk
+.vs
+
+# Generated documentation
+docs/
+doc/
+docs/_build/
+sphinx-build/
+
+# Package management
+*.lock
+package-lock.json
+yarn.lock
+Cargo.lock
+Pipfile.lock
+
+# IDE temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Logs
+*.log
+
+# Databases
+*.db
+*.sqlite
+*.mdb
+*.accdb
+
+# Temporary files
+*.tmp
+temp/
+
+# Secrets
+*.env
+config.json # or other config files with sensitive data
+
+# Specific to your project, add these at the end: 
+# Example for specific image files you want to ignore
+images/large/*.jpg
+
+# ToDo files
+ToDo.txt

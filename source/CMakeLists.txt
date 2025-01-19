@@ -1,23 +1,26 @@
 
 cmake_minimum_required(VERSION 3.14)
 
-project(url_shortening_service VERSION 1.0)
+project(URLShortener VERSION 1.0)
 
 
-set(cmake_cxx_standard cxx_std_20)
+set(cmake_cxx_standard 20)
 set(cmake_cxx_standard_required TRUE)
 
 add_subdirectory(url)
 add_subdirectory(random)
 
-add_executable(url_shortening_service app.cpp)
+add_executable(URLShortener app.cpp)
 
-target_link_libraries(url_shortening_service PRIVATE 
+target_link_libraries(URLShortener PRIVATE 
 	url
 	random
 )
 
-target_include_directories(url_shortening_service PRIVATE 
+target_include_directories(URLShortener PRIVATE 
 	"${PROJECT_SOURCE_DIR}/url"
 	"${PROJECT_SOURCE_DIR}/random" 
 )
+
+
+# target_include_directories(url PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}) # добавляем папку url для поиска заголовков

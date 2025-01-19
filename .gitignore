@@ -78,3 +78,7 @@ images/large/*.jpg
 
 # ToDo files
 ToDo.txt
+
+# google test
+
+googletest/

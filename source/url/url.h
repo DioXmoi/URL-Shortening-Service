@@ -5,46 +5,46 @@
 #include <string_view>
 
 
-using id = int;
-using time_point_sys = std::chrono::time_point<std::chrono::system_clock>;
+using Id = int;
+using TimePointSys = std::chrono::time_point<std::chrono::system_clock>;
 
-class uri {
+class Uri {
 public:
 
-	uri(
-		id id,
-		std::string_view uri,
+	Uri(
+		Id Id,
+		std::string_view Uri,
 		std::string_view short_code,
-		time_point_sys created_at = std::chrono::system_clock::now(),
-		time_point_sys updated_at = std::chrono::system_clock::now(),
+		TimePointSys created_at = std::chrono::system_clock::now(),
+		TimePointSys updated_at = std::chrono::system_clock::now(),
 		int access_count = 0
 	);
 	
 	// gets
 
-	id get_id() const { return m_id; }
-	std::string_view get_uri() const { return m_uri; }
-	std::string_view get_short_code() const { return m_short_code; }
-	time_point_sys get_created_at() const { return m_created_at; }
-	time_point_sys get_updated_at() const { return m_updated_at; }
-	int get_access_count() const { return m_access_count; }
+	Id GetId() const { return m_id; }
+	std::string_view GetUri() const { return m_uri; }
+	std::string_view GetShortCode() const { return m_shortCode; }
+	TimePointSys GetCreatedAt() const { return m_createdAt; }
+	TimePointSys GetUpdatedAt() const { return m_updatedAt; }
+	int GetAccessCount() const { return m_accessCount; }
 
 	// sets
 
-	void set_short_code(std::string_view code) {
-		m_short_code = code;
-		update();
+	void SetShortCode(std::string_view code) {
+		m_shortCode = code;
+		Update();
 	}
 
 private:
 
-	void update() { m_updated_at = std::chrono::system_clock::now(); }
+	void Update() { m_updatedAt = std::chrono::system_clock::now(); }
 
 private:
-	id m_id{ };
+	Id m_id{ };
 	std::string m_uri{ };
-	std::string m_short_code{ };
-	time_point_sys m_created_at{ };
-	time_point_sys m_updated_at{ };
-	int m_access_count{ };
+	std::string m_shortCode{ };
+	TimePointSys m_createdAt{ };
+	TimePointSys m_updatedAt{ };
+	int m_accessCount{ };
 };

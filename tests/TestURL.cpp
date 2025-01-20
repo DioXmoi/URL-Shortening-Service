@@ -58,7 +58,7 @@ TEST_F(UrlTest, test_url_get_access_count) {
 
     url -> IncrementAccessCount();
 
-    accessCount = url->GetAccessCount();
+    accessCount = url -> GetAccessCount();
 
     EXPECT_EQ(accessCount, 1);
 }

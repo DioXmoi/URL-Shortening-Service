@@ -15,12 +15,16 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-add_executable(URLShortenerTests "TestURL.cpp")
+add_executable(URLShortenerTests 
+ "TestURL.cpp" 
+ "TestStringGenerator.cpp")
 
 target_link_libraries(URLShortenerTests PRIVATE 
  gtest 
  gtest_main 
- url)
+ url
+ random)
 
 target_include_directories(URLShortenerTests PRIVATE 
- "${CMAKE_SOURCE_DIR}/source/url")
+ "${CMAKE_SOURCE_DIR}/source/url"
+ "${CMAKE_SOURCE_DIR}/source/random")

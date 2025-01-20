@@ -65,6 +65,6 @@ namespace Random {
 
 		int m_from{ };
 		int m_to{ };
-		std::vector<char> m_chars{ };
+		const std::vector<char> m_chars{ };
 	};
 }

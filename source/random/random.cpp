@@ -19,7 +19,7 @@ std::mt19937 Random::Generate() {
 Random::StringGenerator::StringGenerator(int len_from, int len_to, std::vector<char> chars)
     : m_from{ len_from }
     , m_to{ len_to }
-    , m_chars{ baseChars }
+    , m_chars{ chars }
 {
     if (m_from <= 0 || m_to <= 0) {
         throw std::invalid_argument("The length of the parameters cannot be zero or negative.");

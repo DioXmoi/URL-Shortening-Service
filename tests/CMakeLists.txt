@@ -17,7 +17,8 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(URLShortenerTests 
  "TestURL.cpp" 
- "TestStringGenerator.cpp")
+ "TestStringGenerator.cpp"
+)
 
 target_link_libraries(URLShortenerTests PRIVATE 
  gtest 

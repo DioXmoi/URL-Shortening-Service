@@ -16,6 +16,7 @@
 #include <thread>
 #include <vector>
 
+
 namespace beast = boost::beast;         // from <boost/beast.hpp>
 namespace http = beast::http;           // from <boost/beast/http.hpp>
 namespace net = boost::asio;            // from <boost/asio.hpp>
@@ -25,92 +26,21 @@ class Session : std::enable_shared_from_this<Session> {
 
 public:
 	// Take ownership of the stream
-	Session(tcp::socket&& socket) noexcept
-		: m_stream{ std::move(socket) }
-	{
-
-	}
+	Session(tcp::socket&& socket) noexcept;
 
 
-	void Run() {
-		net::dispatch(m_stream.get_executor(),
-			beast::bind_front_handler(
-				&Session::DoRead,
-				shared_from_this()));
-	}
+	void Run();
 
-	void DoRead() {
-		m_req = { };
+	void DoRead();
 
-		m_stream.expires_after(std::chrono::seconds(30));
+	void OnRead(beast::error_code ec, std::size_t bytes_transferred);
 
-		http::async_read(m_stream, m_buffer, m_req,
-			beast::bind_front_handler(
-				&Session::OnRead,
-				shared_from_this()));
-	}
+	void SendResponse(http::message_generator&& msg);
 
+	void OnWrite(bool keep_alive, beast::error_code ec,
+		std::size_t bytes_transferred);
 
-	void OnRead(beast::error_code ec, std::size_t bytes_transferred) {
-		boost::ignore_unused(bytes_transferred);
-
-		// This means they closed the connection
-		if (ec == http::error::end_of_stream) {
-			return DoClose();
-		}
-
-		if (ec) {
-			//return fail(ec, "read");
-		}
-
-		// Send the response
-		SendResponse(
-			HandleRequest(std::move(m_req)));
-	}
-
-	void SendResponse(http::message_generator&& msg) {
-		bool keep_alive = msg.keep_alive();
-
-		// Write the response
-		beast::async_write(
-			m_stream,
-			std::move(msg),
-			beast::bind_front_handler(
-				&Session::OnWrite, shared_from_this(), keep_alive));
-	}
-
-	void
-		OnWrite(
-			bool keep_alive,
-			beast::error_code ec,
-			std::size_t bytes_transferred) 
-	{
-		boost::ignore_unused(bytes_transferred);
-
-		if (ec) {
-			// return fail(ec, "write");
-		}
-
-		if (!keep_alive)
-		{
-			// This means we should close the connection, usually because
-			// the response indicated the "Connection: close" semantic.
-			return DoClose();
-		}
-
-		// Read another request
-		DoRead();
-	}
-
-
-	void DoClose() {
-		// Send a TCP shutdown
-		beast::error_code ec;
-		m_stream.socket().shutdown(tcp::socket::shutdown_send, ec);
-
-		// At this point the connection is closed gracefully
-	}
-
+	void DoClose();
 
 	template <class Body, class Allocator>
 	http::message_generator HandleRequest(
@@ -127,6 +57,6 @@ public:
 
 private:
 	beast::flat_buffer m_buffer{ };
-	beast::tcp_stream m_stream{ };
+	beast::tcp_stream m_stream;
 	http::request<http::string_body> m_req{ };
 };

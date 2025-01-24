@@ -7,7 +7,7 @@
 #include <thread>
 #include <vector>
 
-#include "listener.h"
+#include <server.h>
 
 namespace beast = boost::beast;         // from <boost/beast.hpp>
 namespace http = beast::http;           // from <boost/beast/http.hpp>
@@ -15,31 +15,26 @@ namespace net = boost::asio;            // from <boost/asio.hpp>
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
 
+http::message_generator Handler(http::request<http::string_body> req) {
+    http::response<http::string_body> res{ http::status::internal_server_error, req.version() };
+    res.set(http::field::content_type, "text/html");
+    res.keep_alive(req.keep_alive());
+    res.body() = "An error occurred: ' Bib bub'";
+    res.prepare_payload();
+    return res;
+}
+
 int main() {
 
 	std::cout << "url shortening service\n";
 
     auto const address = net::ip::make_address("127.0.0.0");
     auto const port = static_cast<unsigned short>(80);
-    auto const threads = 1;
 
-    // The io_context is required for all I/O
-    net::io_context ioc{ threads };
+    Server<http::string_body> server{ address, port  };
 
-    // Create and launch a listening port
-    std::make_shared<Listener>(
-        ioc,
-        tcp::endpoint{ address, port }) -> Run();
-
-    // Run the I/O service on the requested number of threads
-    std::vector<std::thread> v;
-    v.reserve(threads - 1);
-    for (auto i = threads - 1; i > 0; --i)
-        v.emplace_back(
-            [&ioc] {
-                ioc.run();
-            });
-    ioc.run();
+    std::function<http::message_generator(http::request<http::string_body>)> func{ Handler };
+    server.Run(func);
 
     return EXIT_SUCCESS;
 }

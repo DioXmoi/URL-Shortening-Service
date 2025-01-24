@@ -22,11 +22,17 @@ namespace http = beast::http;           // from <boost/beast/http.hpp>
 namespace net = boost::asio;            // from <boost/asio.hpp>
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
-class Session : std::enable_shared_from_this<Session> {
+
+
+template <class Body, class Allocator = http::basic_fields<std::allocator<char>>>
+using HandlerPtr = std::shared_ptr<std::function<http::message_generator(http::request<Body, Allocator>)>>;
+
+template <class Body, class Allocator = http::basic_fields<std::allocator<char>>>
+class Session : std::enable_shared_from_this<Session<Body, Allocator>> {
 
 public:
 	// Take ownership of the stream
-	Session(tcp::socket&& socket) noexcept;
+	Session(tcp::socket&& socket, HandlerPtr<Body, Allocator> handler);
 
 
 	void Run();
@@ -42,21 +48,103 @@ public:
 
 	void DoClose();
 
-	template <class Body, class Allocator>
-	http::message_generator HandleRequest(
-		http::request<Body, http::basic_fields<Allocator>>&& req)
-	{
-		http::response<http::string_body> res{ http::status::bad_request, req.version() };
-		res.set(http::field::content_type, "text/html");
-		res.keep_alive(req.keep_alive());
-		res.body() = std::string("BiB BUB");
-		res.prepare_payload();
-		return res;
-	}
-
-
 private:
 	beast::flat_buffer m_buffer{ };
 	beast::tcp_stream m_stream;
 	http::request<http::string_body> m_req{ };
+	HandlerPtr<Body, Allocator> m_handler{ };
 };
+
+
+template <class Body, class Allocator>
+Session<Body, Allocator>::Session(tcp::socket&& socket, HandlerPtr<Body, Allocator> handler)
+	: m_stream{ std::move(socket) }
+	, m_handler{ handler }
+{
+
+}
+
+template <class Body, class Allocator>
+void Session<Body, Allocator>::Run() {
+	net::dispatch(m_stream.get_executor(),
+		beast::bind_front_handler(
+			&Session<Body, Allocator>::DoRead,
+			shared_from_this()));
+}
+
+template <class Body, class Allocator>
+void Session<Body, Allocator>::DoRead() {
+	m_req = { };
+
+	m_stream.expires_after(std::chrono::seconds(30));
+
+	http::async_read(m_stream, m_buffer, m_req,
+		beast::bind_front_handler(
+			&Session<Body, Allocator>::OnRead,
+			shared_from_this()));
+}
+
+
+template <class Body, class Allocator>
+void Session<Body, Allocator>::OnRead(beast::error_code ec, std::size_t bytes_transferred) {
+	boost::ignore_unused(bytes_transferred);
+
+	// This means they closed the connection
+	if (ec == http::error::end_of_stream) {
+		return DoClose();
+	}
+
+	if (ec) {
+		//return fail(ec, "read");
+	}
+
+	// Send the response
+	SendResponse(
+		m_handler(std::move(m_req)));
+}
+
+
+template <class Body, class Allocator>
+void Session<Body, Allocator>::SendResponse(http::message_generator&& msg) {
+	bool keep_alive = msg.keep_alive();
+	// Write the response
+	beast::async_write(
+		m_stream,
+		std::move(msg),
+		beast::bind_front_handler(
+			&Session<Body, Allocator>::OnWrite, shared_from_this(), keep_alive));
+}
+
+
+template <class Body, class Allocator>
+void Session<Body, Allocator>::OnWrite(
+	bool keep_alive,
+	beast::error_code ec,
+	std::size_t bytes_transferred)
+{
+	boost::ignore_unused(bytes_transferred);
+
+	if (ec) {
+		// return fail(ec, "write");
+	}
+
+	if (!keep_alive)
+	{
+		// This means we should close the connection, usually because
+		// the response indicated the "Connection: close" semantic.
+		return DoClose();
+	}
+
+	// Read another request
+	DoRead();
+}
+
+
+template <class Body, class Allocator>
+void Session<Body, Allocator>::DoClose() {
+	// Send a TCP shutdown
+	beast::error_code ec;
+	m_stream.socket().shutdown(tcp::socket::shutdown_send, ec);
+
+	// At this point the connection is closed gracefully
+}

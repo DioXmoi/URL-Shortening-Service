@@ -69,7 +69,7 @@ void Session<Body, Allocator>::Run() {
 	net::dispatch(m_stream.get_executor(),
 		beast::bind_front_handler(
 			&Session<Body, Allocator>::DoRead,
-			shared_from_this()));
+			shared_from_this<Body, Allocator>()));
 }
 
 template <class Body, class Allocator>
@@ -81,7 +81,7 @@ void Session<Body, Allocator>::DoRead() {
 	http::async_read(m_stream, m_buffer, m_req,
 		beast::bind_front_handler(
 			&Session<Body, Allocator>::OnRead,
-			shared_from_this()));
+			shared_from_this<Body, Allocator>()));
 }
 
 
@@ -112,7 +112,7 @@ void Session<Body, Allocator>::SendResponse(http::message_generator&& msg) {
 		m_stream,
 		std::move(msg),
 		beast::bind_front_handler(
-			&Session<Body, Allocator>::OnWrite, shared_from_this(), keep_alive));
+			&Session<Body, Allocator>::OnWrite, shared_from_this<Body, Allocator>(), keep_alive));
 }
 
 

@@ -67,12 +67,15 @@ void Server<Body, Allocator>::Run(const std::function<http::message_generator(
     http::request<Body, Allocator>)>& handler) {
     for (auto i{ m_threads - 1 }; i > 0; --i) {
         m_data.emplace_back(
-            [&m_ioc]() {
-                m_ioc.run();
-            });
+            std::bind(&net::io_context::run, &m_ioc)
+        );
     }
 
-    m_listener = std::make_shared<Listener<Body, Allocator>>(m_ioc, { m_address, m_port }, handler);
+    m_listener = std::make_shared<Listener<Body, Allocator>>(
+        m_ioc, 
+        net::ip::tcp::endpoint{ m_address, m_port }, 
+        std::make_shared<std::function<
+        http::message_generator(http::request<Body, Allocator>)>>(handler));
 
     m_ioc.run();
 }

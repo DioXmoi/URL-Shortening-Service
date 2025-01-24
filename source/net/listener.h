@@ -32,7 +32,7 @@ using HandlerPtr = std::shared_ptr<std::function<http::message_generator(http::r
 template <class Body, class Allocator = http::basic_fields<std::allocator<char>>>
 class Listener : public std::enable_shared_from_this<Listener<Body, Allocator>> {
 public:
-    Listener(net::io_context& ioc, tcp::endpoint endpoint);
+    Listener(net::io_context& ioc, tcp::endpoint endpoint, HandlerPtr<Body, Allocator> handler);
 
     // Start avoccepting incoming connections
     void Run(HandlerPtr<Body, Allocator> handler) {
@@ -58,9 +58,11 @@ private:
 template <class Body, class Allocator>
 Listener<Body, Allocator>::Listener(
     net::io_context& ioc,
-    tcp::endpoint endpoint)
+    tcp::endpoint endpoint,
+    HandlerPtr<Body, Allocator> handler)
     : m_ioc(ioc)
     , m_acceptor(net::make_strand(ioc))
+    , m_handler{ handler }
 {
     beast::error_code ec;
 
@@ -101,7 +103,7 @@ void Listener<Body, Allocator>::DoAccept() {
         net::make_strand(m_ioc),
         beast::bind_front_handler(
             &Listener<Body, Allocator>::OnAccept,
-            shared_from_this()));
+            shared_from_this<Body, Allocator>()));
 }
 
 
@@ -113,7 +115,6 @@ void Listener<Body, Allocator>::OnAccept(beast::error_code ec, tcp::socket socke
     }
     else {
         // Create the session and Run it
-        //auto ptr = std::make_shared<Session<Body, Allocator>>(std::move(socket), m_handler);
 
         auto ptr = std::make_shared<Session<Body, Allocator>>(std::move(socket), m_handler);
 

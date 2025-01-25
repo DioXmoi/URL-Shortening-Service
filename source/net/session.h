@@ -7,6 +7,7 @@
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/config.hpp>
+
 #include <algorithm>
 #include <cstdlib>
 #include <functional>
@@ -27,12 +28,16 @@ using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 template <class Body, class Allocator = http::basic_fields<std::allocator<char>>>
 using HandlerPtr = std::shared_ptr<std::function<http::message_generator(http::request<Body, Allocator>)>>;
 
+using LoggerPtr = std::shared_ptr<spdlog::logger>;
+
+
+
 template <class Body, class Allocator = http::basic_fields<std::allocator<char>>>
 class Session : std::enable_shared_from_this<Session<Body, Allocator>> {
 
 public:
 	// Take ownership of the stream
-	Session(tcp::socket&& socket, HandlerPtr<Body, Allocator> handler);
+	Session(tcp::socket&& socket, HandlerPtr<Body, Allocator> handler, LoggerPtr logger);
 
 
 	void Run();
@@ -51,15 +56,18 @@ public:
 private:
 	beast::flat_buffer m_buffer{ };
 	beast::tcp_stream m_stream;
-	http::request<http::string_body> m_req{ };
 	HandlerPtr<Body, Allocator> m_handler{ };
+	LoggerPtr m_logger{ };
+	http::request<http::string_body> m_req{ };
 };
 
 
 template <class Body, class Allocator>
-Session<Body, Allocator>::Session(tcp::socket&& socket, HandlerPtr<Body, Allocator> handler)
+Session<Body, Allocator>::Session(tcp::socket&& socket, HandlerPtr<Body, Allocator> handler, LoggerPtr logger)
 	: m_stream{ std::move(socket) }
 	, m_handler{ handler }
+	, m_logger{ logger }
+	, m_req{ }
 {
 
 }
@@ -69,19 +77,19 @@ void Session<Body, Allocator>::Run() {
 	net::dispatch(m_stream.get_executor(),
 		beast::bind_front_handler(
 			&Session<Body, Allocator>::DoRead,
-			shared_from_this<Body, Allocator>()));
+			std::enable_shared_from_this<Session<Body, Allocator>>::shared_from_this()));
 }
 
 template <class Body, class Allocator>
 void Session<Body, Allocator>::DoRead() {
-	m_req = { };
+	m_req.clear();
 
 	m_stream.expires_after(std::chrono::seconds(30));
 
 	http::async_read(m_stream, m_buffer, m_req,
 		beast::bind_front_handler(
 			&Session<Body, Allocator>::OnRead,
-			shared_from_this<Body, Allocator>()));
+			std::enable_shared_from_this<Session<Body, Allocator>>::shared_from_this()));
 }
 
 
@@ -95,12 +103,12 @@ void Session<Body, Allocator>::OnRead(beast::error_code ec, std::size_t bytes_tr
 	}
 
 	if (ec) {
-		//return fail(ec, "read");
+		m_logger -> error(ec.what());
+		return;
 	}
 
 	// Send the response
-	SendResponse(
-		m_handler(std::move(m_req)));
+	SendResponse(m_handler -> operator()(std::move(m_req)));
 }
 
 
@@ -112,7 +120,7 @@ void Session<Body, Allocator>::SendResponse(http::message_generator&& msg) {
 		m_stream,
 		std::move(msg),
 		beast::bind_front_handler(
-			&Session<Body, Allocator>::OnWrite, shared_from_this<Body, Allocator>(), keep_alive));
+			&Session<Body, Allocator>::OnWrite, std::enable_shared_from_this<Session<Body, Allocator>>::shared_from_this(), keep_alive));
 }
 
 
@@ -125,7 +133,8 @@ void Session<Body, Allocator>::OnWrite(
 	boost::ignore_unused(bytes_transferred);
 
 	if (ec) {
-		// return fail(ec, "write");
+		m_logger -> error(ec.what());
+		return;
 	}
 
 	if (!keep_alive)

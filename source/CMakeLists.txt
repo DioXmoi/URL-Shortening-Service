@@ -13,6 +13,16 @@ if(NOT Boost_FOUND)
  message(FATAL_ERROR "Boost not found")
 endif()
 
+include(FetchContent)
+
+FetchContent_Declare(
+    spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog.git
+    GIT_TAG        v1.15.0
+)
+
+FetchContent_MakeAvailable(spdlog)
+
 add_subdirectory(url)
 add_subdirectory(random)
 add_subdirectory(net)
@@ -23,6 +33,8 @@ target_link_libraries(URLShortener PRIVATE
  url
  random
  net
+ Boost::system
+ spdlog::spdlog
 )
 
 target_include_directories(URLShortener PRIVATE 

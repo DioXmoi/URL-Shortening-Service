@@ -53,6 +53,8 @@ public:
 
 	void DoClose();
 
+	~Session();
+
 private:
 	beast::flat_buffer m_buffer{ };
 	beast::tcp_stream m_stream;
@@ -156,4 +158,9 @@ void Session<Body, Allocator>::DoClose() {
 	m_stream.socket().shutdown(tcp::socket::shutdown_send, ec);
 
 	// At this point the connection is closed gracefully
+}
+
+template <class Body, class Allocator>
+Session<Body, Allocator>::~Session() {
+	DoClose();
 }

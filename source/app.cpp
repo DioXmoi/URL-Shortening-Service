@@ -24,7 +24,7 @@ int main() {
 	std::cout << "url shortening service\n";
 
 
-    auto const address = net::ip::make_address("127.0.0.0");
+    auto const address = net::ip::make_address("127.0.0.1");
     auto const port = static_cast<unsigned short>(80);
 
     Server<http::string_body> server{ address, port  };

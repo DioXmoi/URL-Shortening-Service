@@ -26,6 +26,7 @@ FetchContent_MakeAvailable(spdlog)
 add_subdirectory(url)
 add_subdirectory(random)
 add_subdirectory(net)
+add_subdirectory(database)
 
 add_executable(URLShortener app.cpp)
 
@@ -33,6 +34,7 @@ target_link_libraries(URLShortener PRIVATE
  url
  random
  net
+ database
  Boost::system
  spdlog::spdlog
 )
@@ -41,5 +43,6 @@ target_include_directories(URLShortener PRIVATE
  "${PROJECT_SOURCE_DIR}/url"
  "${PROJECT_SOURCE_DIR}/random"
  "${PROJECT_SOURCE_DIR}/net"
+ "${PROJECT_SOURCE_DIR}/database"
  "${Boost_INCLUDE_DIRS}"
 )

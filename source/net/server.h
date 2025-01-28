@@ -19,7 +19,7 @@
 
 
 #include "spdlog/spdlog.h"
-#include "spdlog/async.h" //поддержка асинхронного ведения журнала.
+#include "spdlog/async.h" //РїРѕРґРґРµСЂР¶РєР° Р°СЃРёРЅС…СЂРѕРЅРЅРѕРіРѕ РІРµРґРµРЅРёСЏ Р¶СѓСЂРЅР°Р»Р°.
 #include "spdlog/sinks/basic_file_sink.h"
 
 #include "listener.h"

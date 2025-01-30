@@ -6,7 +6,7 @@ find_package(PostgreSQL REQUIRED)
 
 add_library(database 
  postgresql.cpp 
- # postgresql.h
+ postgresql.h
 )
 
 
@@ -16,11 +16,12 @@ if(PostgreSQL_FOUND)
  message(STATUS "  Libraries:   ${PostgreSQL_LIBRARIES}")
 
  include_directories(${PostgreSQL_INCLUDE_DIRS})
- target_link_libraries(database 
+ target_link_libraries(database PUBLIC
   ${PostgreSQL_LIBRARIES}
+  Boost::system
  )
 
- target_include_directories(database PRIVATE
+ target_include_directories(database PUBLIC
   ${PostgreSQL_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
   ${CMAKE_CURRENT_SOURCE_DIR}

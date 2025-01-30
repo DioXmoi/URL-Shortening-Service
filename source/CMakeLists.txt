@@ -45,4 +45,5 @@ target_include_directories(URLShortener PRIVATE
  "${PROJECT_SOURCE_DIR}/net"
  "${PROJECT_SOURCE_DIR}/database"
  "${Boost_INCLUDE_DIRS}"
+ ${PostgreSQL_INCLUDE_DIRS}
 )

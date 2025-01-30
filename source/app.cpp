@@ -1,14 +1,25 @@
 #include "server.h"
 
+#include "postgresql.h"
+
 #include "spdlog/spdlog.h"
 #include "spdlog/async.h" //поддержка асинхронного ведения журнала.
 #include "spdlog/sinks/basic_file_sink.h"
 
 
-
 http::message_generator Handler(http::request<http::string_body> req);
 
 int main() {
+
+    PostgreSQL db{ };
+
+    auto ec = boost::system::error_code{ };
+    db.connect(ec);
+    if (ec) {
+        std::cout << "That`s is BAD......" << ec.what() << "\n";
+        return EXIT_FAILURE;
+    }
+
     try {
         auto async_file = spdlog::basic_logger_mt<spdlog::async_factory>("async_file_logger", "logs/async_log.txt");  
         for (int i = 1; i < 101; ++i) { 

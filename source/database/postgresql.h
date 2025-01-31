@@ -19,49 +19,27 @@ class PostgreSQL : public IDatabase {
 public:
 
     PostgreSQL(
-        std::string_view host = "127.0.0.1",
-        std::string_view user = "postgres",
-        std::string_view pass = "postgres",
-        std::string_view dbName = "postgres", 
+        std::string_view host,
+        std::string_view user,
+        std::string_view pass,
+        std::string_view dbName, 
         int port = 5432, 
         int countConn = 1
     )
-        : m_host{ host }
-        , m_user{ user }
-        , m_pass{ pass }
-        , m_db_name{ dbName }
-        , m_port{ std::to_string(port) }
+        : m_config{ host, user, pass, dbName, port }
         , m_pool{ countConn }
     {
-        if (m_host.empty()) {
-            throw std::invalid_argument("The value of the host field cannot be empty");
-        }
 
-        if (m_user.empty()) {
-            throw std::invalid_argument("The value of the user field cannot be empty");
-        }
-
-        if (m_pass.empty()) {
-            throw std::invalid_argument("The value of the password field cannot be empty");
-        }
-
-        if (m_db_name.empty()) {
-            throw std::invalid_argument("The value of the dbname field cannot be empty");
-        }
-
-        if (port < 0 || port > 65535) {
-            throw std::invalid_argument("The value of the port field must be in the range from 0 to 65535");
-        }
-
-        if (countConn < 1) {
-            throw std::invalid_argument("The number of database connections cannot be less than one");
-        }
     }
 
     void Connect() override {
-
         const char* keywords[] = { "host", "user", "password", "dbname", "port", nullptr };
-        const char* values[] = { m_host.c_str(), m_user.c_str(), m_pass.c_str(), m_db_name.c_str(), m_port.c_str(), nullptr };
+        const char* values[] = { m_config.GetHost().c_str(),
+                                 m_config.GetUser().c_str(), 
+                                 m_config.GetPassword().c_str(), 
+                                 m_config.GetDatabaseName().c_str(), 
+                                 m_config.GetPort().c_str(), 
+                                 nullptr };
 
         m_pool.Connect(keywords, values);
     }
@@ -173,9 +151,12 @@ private:
     class ConnectionPool {
     public:
 
-        ConnectionPool(int count) 
-            : m_countConn{ count }
+        ConnectionPool(int countConn)
+            : m_countConn{ countConn }
         {
+            if (countConn < 1) {
+                throw std::invalid_argument("Number of connections must be >= 1.");
+            }
         }
 
         void Connect(const char* keywords[], const char* values[]) {
@@ -236,13 +217,58 @@ private:
         std::condition_variable m_cond{ };
     };
 
+
+    class ConnectionConfig {
+    public:
+        ConnectionConfig(std::string_view host,
+            std::string_view user,
+            std::string_view pass,
+            std::string_view dbName,
+            int port) 
+            : m_host{ host }
+            , m_user{ user }
+            , m_pass{ pass }
+            , m_dbName{ dbName }
+            , m_port{ std::to_string(port) }
+        {
+            if (m_host.empty()) {
+                throw std::invalid_argument("Field host cannot be empty.");
+            }
+
+            if (m_user.empty()) {
+                throw std::invalid_argument("Field user cannot be empty.");
+            }
+
+            if (m_pass.empty()) {
+                throw std::invalid_argument("Field password cannot be empty.");
+            }
+
+            if (m_dbName.empty()) {
+                throw std::invalid_argument("Field dbname cannot be empty.");
+            }
+
+            if (port < 0 || port > 65535) {
+                throw std::invalid_argument("Field port must be a valid port number between 0 and 65535.");
+            }
+        }
+
+        const std::string& GetHost() const { return m_host; }
+        const std::string& GetUser() const { return m_user; }
+        const std::string& GetPassword() const { return m_pass; }
+        const std::string& GetDatabaseName() const { return m_dbName; }
+        const std::string& GetPort() const { return m_port; }
+
+    private:
+
+        const std::string m_host;
+        const std::string m_user;
+        const std::string m_pass;
+        const std::string m_dbName;
+        const std::string m_port;
+    };
+
 private:
 
-    const std::string m_host{ };
-    const std::string m_user{ };
-    const std::string m_pass{ };
-    const std::string m_db_name{ };
-    const std::string m_port{ };
-
-    ConnectionPool m_pool{ 1 };
+    ConnectionConfig m_config;
+    ConnectionPool m_pool;
 };

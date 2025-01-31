@@ -1,10 +1,8 @@
 #pragma once
 
-#include <any>
+#include <string>
 #include <string_view>
 #include <vector>
-
-#include <boost/system/error_code.hpp>
 
 
 
@@ -14,17 +12,17 @@ public:
     using SqlParams = const std::vector<std::pair<std::string, std::string>>&;
 
     virtual ~IDatabase() = default;
-    virtual void connect(boost::system::error_code& ec) = 0;
-    virtual void disconnect(boost::system::error_code& ec) = 0;
-    virtual void execute(std::string_view query, SqlParams params, boost::system::error_code& ec) = 0;
+    virtual void Connect() = 0;
+    virtual void Disconnect() = 0;
+    virtual void Execute(std::string_view query, SqlParams params) = 0;
 
-    virtual std::any executeQuery(std::string_view query, SqlParams params, boost::system::error_code& ec) = 0;
+    virtual std::vector<std::string> ExecuteQuery(std::string_view query, SqlParams params) = 0;
     template <typename Response, typename Func>
-    Response query(std::string_view query, SqlParams params, Func converter, boost::system::error_code& ec) {
-        return converter(std::any_cast<std::string>(executeQuery(query, params, ec)));
+    Response Query(std::string_view query, SqlParams params, Func converter) {
+        return converter(ExecuteQuery(query, params));
     }
 
-    virtual void beginTransaction(boost::system::error_code& ec) = 0;
-    virtual void commitTransaction(boost::system::error_code& ec) = 0;
-    virtual void rollbackTransaction(boost::system::error_code& ec) = 0;
+    virtual void BeginTransaction() = 0;
+    virtual void CommitTransaction() = 0;
+    virtual void RollbackTransaction() = 0;
 };

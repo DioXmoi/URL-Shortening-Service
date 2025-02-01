@@ -55,7 +55,7 @@ public:
 
         auto conn{ m_pool.Acquire() };
 
-        std::unique_ptr<PGresult, decltype(&PQclear)> res_guard(
+        std::unique_ptr<PGresult, decltype(&PQclear)> res(
             PQexecParams(conn.get(), 
                          query.data(), 
                          params.size(), 
@@ -65,7 +65,7 @@ public:
                          nullptr, 
                          0), PQclear);
 
-        if (PQresultStatus(res_guard.get()) != PGRES_COMMAND_OK) {
+        if (PQresultStatus(res.get()) != PGRES_COMMAND_OK) {
             m_pool.Release(std::move(conn));
             return;
         }
@@ -75,7 +75,7 @@ public:
 
     std::vector<std::string> ExecuteQuery(std::string_view query, SqlParams params) override {
 
-        auto lengths{ GetLengthsParams(params) };
+        auto lengths{ GetLengthsParams(params) }; // Нужно добавить Проверку на null
         auto values{ GetValuesParams(params) };
 
         auto conn{ m_pool.Acquire() };
@@ -112,16 +112,19 @@ public:
         return data;
     }
 
-    void BeginTransaction()override {
-
+    void BeginTransaction() override {
+        //Not necessary yet
+        throw std::exception("Missing implementation");
     }
 
     void CommitTransaction() override {
-
+        // Not necessary yet
+        throw std::exception("Missing implementation");
     }
 
     void RollbackTransaction() override {
-
+        // Not necessary yet
+        throw std::exception("Missing implementation");
     }
 
     ~PostgreSQL() = default;
@@ -186,17 +189,14 @@ private:
             m_connections.clear();
         }
 
-        int Count() const { return m_countConn; }
-
-        void SetCountConnections(int newCount) {
-            if (newCount >= 1) {
-                m_countConn = newCount;
-            }
-        }
+        int Count() const { return m_connections.size(); }
 
         std::unique_ptr<PGconn, decltype(&PQfinish)> Acquire() {
             std::unique_lock<std::mutex> lock{ m_mutex };
-            m_cond.wait(lock, [this]() { return !m_connections.empty(); });
+            while (m_connections.empty()) {
+                m_cond.wait(lock);
+            }
+
             auto conn{ std::move(m_connections.back()) };
             m_connections.pop_back();
 
@@ -204,9 +204,23 @@ private:
         }
 
         void Release(std::unique_ptr<PGconn, decltype(&PQfinish)> conn) {
+            if (PQstatus(conn.get()) != CONNECTION_OK) {
+                PQreset(conn.get());
+                if (PQstatus(conn.get()) != CONNECTION_OK) {
+                    throw std::exception(PQerrorMessage(conn.get()));
+                }
+            }
+
+            Push(std::move(conn));
+
+            m_cond.notify_one();
+        }
+
+    private:
+
+        void Push(std::unique_ptr <PGconn, decltype(&PQfinish)> conn) {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_connections.push_back(std::move(conn));
-            m_cond.notify_one();
         }
 
     private:
@@ -272,3 +286,5 @@ private:
     ConnectionConfig m_config;
     ConnectionPool m_pool;
 };
+
+// Создать свои исключения для posgreSQL

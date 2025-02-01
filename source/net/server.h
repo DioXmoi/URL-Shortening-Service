@@ -94,11 +94,16 @@ void Server<Body, Allocator>::Run(const std::function<http::message_generator(
             m_logger);
 
 
+        m_listener -> Run();
+
         for (auto threadCounter{ m_countThreads - 1 }; threadCounter > 0; --threadCounter) {
-            m_threads.emplace_back(std::bind(&net::io_context::run, &m_ioc));
+            m_threads.emplace_back(
+                [this]
+                {
+                    m_ioc.run();
+                });
         }
 
-        m_listener -> Run();
 
         m_ioc.run();
     }

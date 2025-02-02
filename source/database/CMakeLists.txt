@@ -7,7 +7,7 @@ find_package(PostgreSQL REQUIRED)
 add_library(database 
  postgresql.cpp 
  postgresql.h
-)
+ postgresqlError.h)
 
 
 if(PostgreSQL_FOUND)

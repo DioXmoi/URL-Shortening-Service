@@ -16,12 +16,20 @@ endif()
 include(FetchContent)
 
 FetchContent_Declare(
-    spdlog
-    GIT_REPOSITORY https://github.com/gabime/spdlog.git
-    GIT_TAG        v1.15.0
+ spdlog
+ GIT_REPOSITORY https://github.com/gabime/spdlog.git
+ GIT_TAG        v1.15.0
 )
 
 FetchContent_MakeAvailable(spdlog)
+
+FetchContent_Declare(
+ nlohmann_json
+ GIT_REPOSITORY https://github.com/nlohmann/json.git
+ GIT_TAG        v3.11.3
+)
+
+FetchContent_MakeAvailable(nlohmann_json)
 
 add_subdirectory(url)
 add_subdirectory(random)
@@ -37,6 +45,7 @@ target_link_libraries(URLShortener PRIVATE
  database
  Boost::system
  spdlog::spdlog
+ nlohmann_json::nlohmann_json
 )
 
 target_include_directories(URLShortener PRIVATE 
@@ -45,5 +54,5 @@ target_include_directories(URLShortener PRIVATE
  "${PROJECT_SOURCE_DIR}/net"
  "${PROJECT_SOURCE_DIR}/database"
  "${Boost_INCLUDE_DIRS}"
- ${PostgreSQL_INCLUDE_DIRS}
+ "${PostgreSQL_INCLUDE_DIRS}"
 )

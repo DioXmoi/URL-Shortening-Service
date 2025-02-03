@@ -12,7 +12,7 @@ PostgreSQL::PostgreSQL(
     : m_config{ host, user, pass, dbName, port }
     , m_pool{ countConn }
 {
-
+    Connect();
 }
 
 

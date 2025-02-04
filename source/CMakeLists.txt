@@ -49,6 +49,7 @@ target_link_libraries(URLShortener PRIVATE
 )
 
 target_include_directories(URLShortener PRIVATE 
+ "${PROJECT_SOURCE_DIR}" 
  "${PROJECT_SOURCE_DIR}/url"
  "${PROJECT_SOURCE_DIR}/random"
  "${PROJECT_SOURCE_DIR}/net"

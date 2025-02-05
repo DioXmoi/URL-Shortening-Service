@@ -1,4 +1,5 @@
 #include "postgresql.h"
+#include <memory>
 
 
 PostgreSQL::PostgreSQL(
@@ -6,8 +7,8 @@ PostgreSQL::PostgreSQL(
     std::string_view user,
     std::string_view pass,
     std::string_view dbName,
-    int port = 5432,
-    int countConn = 1
+    int port,
+    int countConn
 )
     : m_config{ host, user, pass, dbName, port }
     , m_pool{ countConn }
@@ -42,7 +43,8 @@ std::vector<int>  PostgreSQL::GetLengthsParams(SqlParams params) {
             lengths.emplace_back(STR_NULL.size());
         }
         else {
-            lengths.emplace_back(static_cast<int>(param.second.size()));
+            int len = static_cast<int>(param.second.size());
+            lengths.emplace_back(len);
         }
     }
 
@@ -55,10 +57,11 @@ std::vector<const char*>  PostgreSQL::GetValuesParams(SqlParams params) {
     values.reserve(params.size());
     for (const auto& param : params) {
         if (param.second.empty()) {
-            values.emplace_back(STR_NULL);
+            values.emplace_back(STR_NULL.c_str());
         }
         else {
-            values.push_back(param.second.c_str());
+            const char* c_str = param.second.c_str();
+            values.push_back(c_str);
         }
     }
 
@@ -96,7 +99,7 @@ std::vector<std::string> PostgreSQL::ReadPostgresResult(PGresultPtr resGuard) {
     if (PQntuples(resGuard.get()) != 0) {
         int rows = PQntuples(resGuard.get());
         int cols = PQnfields(resGuard.get());
-        data.reserve(rows * cols);
+        data.reserve(static_cast<std::size_t>(rows) * cols);
         for (int i{ 0 }; i < rows; ++i) {
             for (int j{ 0 }; j < cols; ++j) {
                 std::string str{ PQgetvalue(resGuard.get(), i, j) };
@@ -125,8 +128,7 @@ std::vector<std::string> PostgreSQL::ExecuteQuery(std::string_view query, SqlPar
             values.data(),
             lengths.data(),
             nullptr,
-            0), PQclear };
-
+            0), &PQclear };
 
     std::string msg_error{ PQerrorMessage(conn.get()) };
     m_pool.Release(std::move(conn)); 
@@ -170,8 +172,7 @@ void PostgreSQL::ConnectionPool::Connect(const char* keywords[], const char* val
 
     m_connections.clear();
     for (int i = 0; i < m_countConn; ++i) {
-        PGconnPtr conn{ PQconnectdbParams(keywords, values, 0), 
-            &PQfinish };
+        PGconnPtr conn{ PQconnectdbParams(keywords, values, 0), &PQfinish };
 
         if (PQstatus(conn.get()) != CONNECTION_OK) {
             m_connections.clear();
@@ -202,9 +203,8 @@ PostgreSQL::PGconnPtr PostgreSQL::ConnectionPool::Acquire() {
         m_cond.wait(lock);
     }
 
-    auto conn{ std::move(m_connections.back()) };
+    PGconnPtr conn{ std::move(m_connections.back()) };
     m_connections.pop_back();
-
     return conn;
 }
 

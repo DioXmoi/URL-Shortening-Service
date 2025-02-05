@@ -74,7 +74,7 @@ private:
 
         void Push(PGconnPtr conn) {
             std::lock_guard<std::mutex> lock(m_mutex);
-            m_connections.push_back(std::move(conn));
+            m_connections.emplace_back(std::move(conn));
         }
 
     private:

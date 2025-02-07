@@ -52,8 +52,6 @@ private:
     int m_countThreads{ };
     net::io_context m_ioc{ };
     std::vector<std::thread> m_threads{ };
-    std::shared_ptr<Listener<Body, Allocator>> m_listener{ };
-
     LoggerPtr m_logger{ };
 };
 
@@ -87,14 +85,11 @@ void Server<Body, Allocator>::Run(const std::function<http::message_generator(
         auto endpoint{ net::ip::tcp::endpoint{ m_address, m_port } };
         auto funcPtr{ std::make_shared<std::function<http::message_generator(http::request<Body, Allocator>)>>(handler) };
 
-        m_listener = std::make_shared<Listener<Body, Allocator>>(
-            m_ioc, 
+        std::make_shared<Listener<Body, Allocator>>(
+            m_ioc,
             endpoint,
             funcPtr,
-            m_logger);
-
-
-        m_listener -> Run();
+            m_logger)->Run();
 
         for (auto threadCounter{ m_countThreads - 1 }; threadCounter > 0; --threadCounter) {
             m_threads.emplace_back(

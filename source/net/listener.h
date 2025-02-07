@@ -29,18 +29,17 @@ namespace net = boost::asio;            // from <boost/asio.hpp>
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
 
-template <class Body, class Allocator = http::basic_fields<std::allocator<char>>>
-using HandlerPtr = std::shared_ptr<std::function<http::message_generator(http::request<Body, Allocator>)>>;
-
-using LoggerPtr = std::shared_ptr<spdlog::logger>;
-
 // Accepts incoming connections and launches the sessions
 template <class Body, class Allocator = http::basic_fields<std::allocator<char>>>
 class Listener : public std::enable_shared_from_this<Listener<Body, Allocator>> {
 public:
+
+    using HandlerPtr = std::shared_ptr<std::function<http::message_generator(http::request<Body, Allocator>)>>;
+    using LoggerPtr = std::shared_ptr<spdlog::logger>;
+
     Listener(net::io_context& ioc, 
         tcp::endpoint endpoint, 
-        HandlerPtr<Body, Allocator> handler, 
+        HandlerPtr handler, 
         LoggerPtr logger);
 
     // Start avoccepting incoming connections
@@ -56,7 +55,7 @@ private:
     net::io_context& m_ioc;
     tcp::acceptor m_acceptor;
 
-    HandlerPtr<Body, Allocator> m_handler;
+    HandlerPtr m_handler;
     LoggerPtr m_logger;
 };
 
@@ -65,12 +64,12 @@ template <class Body, class Allocator>
 Listener<Body, Allocator>::Listener(
     net::io_context& ioc,
     tcp::endpoint endpoint,
-    HandlerPtr<Body, Allocator> handler,
+    HandlerPtr handler,
     LoggerPtr logger)
     : m_ioc(ioc)
     , m_acceptor(net::make_strand(ioc))
-    , m_handler{ handler }
-    , m_logger{ logger }
+    , m_handler(handler)
+    , m_logger(logger)
 {
     beast::error_code ec;
 
@@ -116,22 +115,24 @@ void Listener<Body, Allocator>::DoAccept() {
     m_acceptor.async_accept(
         net::make_strand(m_ioc),
         beast::bind_front_handler(
-            &Listener<Body, Allocator>::OnAccept,
-            std::enable_shared_from_this<Listener<Body, Allocator>>::shared_from_this()));
+            &Listener::OnAccept,
+            this -> shared_from_this()));
 }
 
 template <class Body, class Allocator>
 void Listener<Body, Allocator>::OnAccept(beast::error_code ec, tcp::socket socket) {
     if (ec) {
-        m_logger -> error(ec.what());
+        m_logger->error(ec.what());
         return; // To avoid infinite loop
     }
     else {
         // Create the session and Run it
+        auto session = std::make_shared<Session<Body, Allocator>>(
+            std::move(socket),
+            m_handler,
+            m_logger);
 
-        auto ptr = std::make_shared<Session<Body, Allocator>>(std::move(socket), m_handler, m_logger);
-
-        ptr -> Run();
+        session->Run();
     }
 
     // Accept another connection

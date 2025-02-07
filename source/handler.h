@@ -1,0 +1,177 @@
+#pragma once 
+
+
+#include "format"
+#include "postgresql.h"
+#include "url.h"
+#include "random.h"
+#include <nlohmann/json.hpp>
+#include "spdlog/spdlog.h"
+#include "spdlog/async.h" 
+#include "spdlog/sinks/basic_file_sink.h"
+
+
+using json = nlohmann::json;
+
+template <class Body, class Allocator = http::basic_fields<std::allocator<char>>>
+class HttpHandler {
+public:
+    HttpHandler(std::unique_ptr<IDatabase> database,
+        std::string loggerName,
+        const Random::StringGenerator& generator)
+        : m_database{ std::move(database) }
+        , m_generator{ generator }
+    {
+        std::string dir = std::format("logs/{}.txt", loggerName);
+        m_logger = spdlog::basic_logger_mt<spdlog::async_factory>(loggerName.c_str(), dir.c_str());
+    }
+
+    http::message_generator operator()(http::request<Body, Allocator>&& req) {
+        if (req.method() == http::verb::post) {
+            return HandlerMethodPost(std::move(req));
+        }
+        else {
+            return GenerateMethodNotAllowed(std::move(req));
+        }
+    }
+
+private:
+
+    // 400 Returns a bad request response
+    http::response<http::string_body> GenerateBadRequest(
+        http::request<Body, Allocator>&& req, std::string_view why) {
+
+        http::response<http::string_body> res{ http::status::bad_request, req.version() };
+
+        res.set(http::field::content_type, "application/json");
+        res.keep_alive(req.keep_alive());
+        res.body() = nlohmann::json{ why }.dump(4);
+        res.prepare_payload();
+
+        return res;
+    }
+
+    // 404 NOT FOUND
+    http::response<http::string_body> GenerateNotFound(
+        http::request<Body, Allocator>&& req, std::string_view why) {
+
+        http::response<http::string_body> res{ http::status::not_found, req.version() };
+
+        res.set(http::field::content_type, "application/json");
+        res.keep_alive(req.keep_alive());
+        res.prepare_payload();
+
+        res.body() = nlohmann::json{ why }.dump(4);
+
+        return res;
+    }
+
+    // 405 Method Not Allowed
+    http::response<http::string_body> GenerateMethodNotAllowed(
+        http::request<Body, Allocator>&& req) {
+
+        http::response<http::string_body> res{ http::status::method_not_allowed, req.version() };
+
+        res.set(http::field::content_type, "application/json");
+        res.keep_alive(req.keep_alive());
+        res.prepare_payload();
+
+        std::string message = "Method not allowed for this endpoint.";
+        res.body() = nlohmann::json{ message }.dump(4);
+
+        return res;
+    }
+
+    // Handle POST /shorten (create a new url shorten)
+    http::response<http::string_body> CreateShortenUrl(
+        http::request<Body, Allocator>&& req) {
+        if (req.body().empty()) {
+            return GenerateBadRequest(std::move(req), "Empty request body.");
+        }
+
+        try {
+            std::string body;
+            json j{ json::parse(req.body()) };
+            std::string url{ j.at("url").get<std::string>() };
+
+            body = m_database -> Query<std::string>("SELECT to_json(u) FROM urls AS u WHERE u.url = $1",
+                IDatabase::SqlParams{ std::make_pair(std::string{ "$1" }, url) },
+                [&](const std::vector<std::string>& data) -> std::string {
+                    if (data.empty()) {
+                        return { };
+                    }
+
+                    return data.front(); // returns a single string containing json
+                });
+
+            bool notCreated = body.empty();
+
+            http::status status = http::status::created; // Default status is created
+
+            if (notCreated) {
+                bool isNotFound{ true };
+                std::string shortCode{ };
+                while (isNotFound) {
+                    shortCode = m_generator.Generate();
+                    isNotFound = m_database -> Query<bool>("SELECT u.shortcode FROM urls AS u WHERE u.shortcode = $1",
+                        IDatabase::SqlParams{ std::make_pair(std::string{ "$1" }, shortCode) },
+                        [](const std::vector<std::string>& data) -> bool {
+                            return !data.empty();
+                        });
+                }
+
+                // If the shortcode is missing, we can bind it to the url.
+                body = m_database -> Query<std::string>("INSERT INTO urls (url, shortcode) VALUES ($1, $2) RETURNING to_json(urls.*) AS json_data",
+                    IDatabase::SqlParams{ std::make_pair(std::string{ "$1" }, url), std::make_pair(std::string{ "$2" }, shortCode) },
+                    [](const std::vector<std::string>& data) -> std::string {
+                        return data.front(); // returns a single string containing json
+                    });
+            }
+            else {
+                status = http::status::ok; // Set status to OK if the URL already exists
+            }
+
+            http::response<http::string_body> res{ status, req.version() };
+
+            res.set(http::field::content_type, "application/json");
+            res.keep_alive(req.keep_alive());
+            res.body() = json::parse(body).dump(4);
+            res.prepare_payload();
+
+            return res;
+        }
+        catch (const PostgreSQLError::PostgreSQLError& e) {
+            m_logger -> error("Exception: To process Database: {}", e.what());
+            return GenerateBadRequest(std::move(req), "Failed to process Database.");
+        }
+        catch (const json::parse_error& e) {
+            m_logger -> error("Exception: JSON parsing error: {}", e.what());
+            return GenerateBadRequest(std::move(req), "Make sure that the request body has the correct JSON format.");
+        }
+        catch (const json::type_error& e) {
+            m_logger -> error("Exception: Data type error: {}", e.what());
+            return GenerateBadRequest(std::move(req), "Check that the value of the 'url' key is a string.");
+        }
+        catch (const std::exception& e) {
+            m_logger -> error("Exception: during POST /shorten request processing: {}", e.what());
+            return GenerateBadRequest(std::move(req), "Failed to process request.");
+        }
+    }
+
+    http::message_generator HandlerMethodPost(http::request<Body, Allocator>&& req) {
+        std::string target{ req.target() };
+        if (target == "/shorten") {
+            return CreateShortenUrl(std::move(req));
+        }
+        else {
+            return GenerateNotFound(std::move(req), "Endpoint was not found.");
+        }
+    }
+
+
+
+private:
+    std::unique_ptr<IDatabase> m_database;
+    LoggerPtr m_logger;
+    Random::StringGenerator m_generator;
+};

@@ -27,8 +27,12 @@ public:
     }
 
     http::message_generator operator()(http::request<Body, Allocator>&& req) {
-        if (req.method() == http::verb::post) {
+        http::verb method{ req.method() };
+        if (method == http::verb::post) {
             return HandlerMethodPost(std::move(req));
+        }
+        else if (method == http::verb::get) {
+            return HandlerMethodGet(std::move(req));
         }
         else {
             return GenerateMethodNotAllowed(std::move(req));
@@ -82,6 +86,20 @@ private:
         return res;
     }
 
+
+    std::string QuerySelectByShortCode(std::string_view shortCode) {
+        return m_database -> Query<std::string>(
+            "UPDATE urls SET accesscount = accesscount + 1 WHERE shortcode = $1 RETURNING to_json(urls.*)",
+            IDatabase::SqlParams{ { "$1", shortCode.data() } },
+            [](const std::vector<std::string>& data) -> std::string {
+                if (data.empty()) {
+                    return { }; // Return an empty string if nothing is found.
+                }
+
+                return data.front(); // Return JSON if found.
+            } );
+    }
+
     // Handle POST /shorten (create a new url shorten)
     http::response<http::string_body> CreateShortenUrl(
         http::request<Body, Allocator>&& req) {
@@ -96,7 +114,7 @@ private:
 
             body = m_database -> Query<std::string>("SELECT to_json(u) FROM urls AS u WHERE u.url = $1",
                 IDatabase::SqlParams{ std::make_pair(std::string{ "$1" }, url) },
-                [&](const std::vector<std::string>& data) -> std::string {
+                [](const std::vector<std::string>& data) -> std::string {
                     if (data.empty()) {
                         return { };
                     }
@@ -109,15 +127,12 @@ private:
             http::status status = http::status::created; // Default status is created
 
             if (notCreated) {
-                bool isNotFound{ true };
+                bool isFound{ true };
                 std::string shortCode{ };
-                while (isNotFound) {
+                while (isFound) {
                     shortCode = m_generator.Generate();
-                    isNotFound = m_database -> Query<bool>("SELECT u.shortcode FROM urls AS u WHERE u.shortcode = $1",
-                        IDatabase::SqlParams{ std::make_pair(std::string{ "$1" }, shortCode) },
-                        [](const std::vector<std::string>& data) -> bool {
-                            return !data.empty();
-                        });
+
+                    isFound = QuerySelectByShortCode(shortCode).empty();
                 }
 
                 // If the shortcode is missing, we can bind it to the url.
@@ -162,6 +177,48 @@ private:
         std::string target{ req.target() };
         if (target == "/shorten") {
             return CreateShortenUrl(std::move(req));
+        }
+        else {
+            return GenerateNotFound(std::move(req), "Endpoint was not found.");
+        }
+    }
+
+
+    // Handle GET starts with /shorten/
+    http::response<http::string_body> FindUrlByShortCode(
+        http::request<Body, Allocator>&& req, std::string_view shortCode) {
+        try {
+            std::string body = QuerySelectByShortCode(shortCode);
+
+            if (body.empty()) {
+                return GenerateNotFound(std::move(req), "The short URL was not found.");
+            }
+
+            http::response<http::string_body> res{ http::status::ok, req.version() };
+            res.set(http::field::content_type, "application/json");
+            res.keep_alive(req.keep_alive());
+            res.body() = json::parse(body).dump(4);
+            res.prepare_payload();
+
+            return res;
+        }
+        catch (const PostgreSQLError::PostgreSQLError& e) {
+            m_logger -> error("Exception: To process Database: {}", e.what());
+            return GenerateBadRequest(std::move(req), "Failed to process Database.");
+        }
+        catch (const std::exception& e) {
+            m_logger -> error("Exception: during GET /shorten/ request processing: {}", e.what());
+            return GenerateBadRequest(std::move(req), "Failed to process request.");
+        }
+    }
+
+    http::message_generator HandlerMethodGet(http::request<Body, Allocator>&& req) {
+        std::string target{ req.target() };
+
+        const std::string pattern{ "/shorten/" };
+        if (target.starts_with(pattern)) {
+            std::string shortcode = target.substr(pattern.size());
+            return FindUrlByShortCode(std::move(req), shortcode);
         }
         else {
             return GenerateNotFound(std::move(req), "Endpoint was not found.");

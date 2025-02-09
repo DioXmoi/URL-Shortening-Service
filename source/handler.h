@@ -47,49 +47,57 @@ public:
 
 private:
 
-    // 400 Returns a bad request response
-    http::response<http::string_body> GenerateBadRequest(
-        http::request<Body, Allocator>&& req, std::string_view why) {
+    http::message_generator CreateStandardResponse(
+        http::request<Body, Allocator>&& req, http::status status, json&& body) {
 
-        http::response<http::string_body> res{ http::status::bad_request, req.version() };
-
+        http::response<http::string_body> res{ status, req.version() };
         res.set(http::field::content_type, "application/json");
         res.keep_alive(req.keep_alive());
-        res.body() = nlohmann::json{ why }.dump(4);
+        res.body() = body.dump(4);
         res.prepare_payload();
 
         return res;
+    }
+
+    http::message_generator CreateStandardResponse(
+        http::request<Body, Allocator>&& req, http::status status) {
+
+        http::response<http::empty_body> res{ status, req.version() };
+        res.keep_alive(req.keep_alive());
+        res.prepare_payload();
+
+        return res;
+    }
+
+
+    // 400 Returns a bad request response
+    http::message_generator GenerateBadRequest(
+        http::request<Body, Allocator>&& req, std::string_view why) {
+        json json;
+        json["Error"] = why;
+        return CreateStandardResponse(std::move(req),
+            http::status::bad_request,
+            std::move(json));
     }
 
     // 404 NOT FOUND
-    http::response<http::string_body> GenerateNotFound(
+    http::message_generator GenerateNotFound(
         http::request<Body, Allocator>&& req, std::string_view why) {
-
-        http::response<http::string_body> res{ http::status::not_found, req.version() };
-
-        res.set(http::field::content_type, "application/json");
-        res.keep_alive(req.keep_alive());
-        res.prepare_payload();
-
-        res.body() = nlohmann::json{ why }.dump(4);
-
-        return res;
+        json json;
+        json["Error"] = why;
+        return CreateStandardResponse(std::move(req),
+            http::status::not_found,
+            std::move(json));
     }
 
     // 405 Method Not Allowed
-    http::response<http::string_body> GenerateMethodNotAllowed(
+    http::message_generator GenerateMethodNotAllowed(
         http::request<Body, Allocator>&& req) {
-
-        http::response<http::string_body> res{ http::status::method_not_allowed, req.version() };
-
-        res.set(http::field::content_type, "application/json");
-        res.keep_alive(req.keep_alive());
-        res.prepare_payload();
-
-        std::string message = "Method not allowed for this endpoint.";
-        res.body() = nlohmann::json{ message }.dump(4);
-
-        return res;
+        json json;
+        json["Error"] = "Method not allowed for this endpoint.";
+        return CreateStandardResponse(std::move(req),
+            http::status::method_not_allowed,
+            std::move(json));
     }
 
 
@@ -107,7 +115,7 @@ private:
     }
 
     // Handle POST /shorten (create a new url shorten)
-    http::response<http::string_body> CreateShortenUrl(
+    http::message_generator CreateShortenUrl(
         http::request<Body, Allocator>&& req) {
         if (req.body().empty()) {
             return GenerateBadRequest(std::move(req), "Empty request body.");
@@ -150,14 +158,9 @@ private:
                 status = http::status::ok; // Set status to OK if the URL already exists
             }
 
-            http::response<http::string_body> res{ status, req.version() };
-
-            res.set(http::field::content_type, "application/json");
-            res.keep_alive(req.keep_alive());
-            res.body() = json::parse(std::move(body)).dump(4);
-            res.prepare_payload();
-
-            return res;
+            return CreateStandardResponse(std::move(req),
+                status,
+                json::parse(std::move(body)));
         }
         catch (const PostgreSQLError::PostgreSQLError& e) {
             m_logger -> error("Exception: To process Database: {}", e.what());
@@ -189,7 +192,7 @@ private:
 
 
     // Handle GET starts with /shorten/...
-    http::response<http::string_body> FindUrlByShortCode(
+    http::message_generator FindUrlByShortCode(
         http::request<Body, Allocator>&& req, std::string_view shortCode) {
         try {
             std::string body = QuerySelectByShortCode(shortCode);
@@ -198,13 +201,9 @@ private:
                 return GenerateNotFound(std::move(req), "The short URL was not found.");
             }
 
-            http::response<http::string_body> res{ http::status::ok, req.version() };
-            res.set(http::field::content_type, "application/json");
-            res.keep_alive(req.keep_alive());
-            res.body() = json::parse(std::move(body)).dump(4);
-            res.prepare_payload();
-
-            return res;
+            return CreateStandardResponse(std::move(req),
+                http::status::ok,
+                json::parse(std::move(body)));
         }
         catch (const PostgreSQLError::PostgreSQLError& e) {
             m_logger -> error("Exception: To process Database: {}", e.what());
@@ -231,7 +230,7 @@ private:
     }
 
     // Handle GET starts with /shorten/.../stats
-    http::response<http::string_body> GetFullStatsByShortCode(
+    http::message_generator GetFullStatsByShortCode(
         http::request<Body, Allocator>&& req, std::string_view shortCode) {
         try {
             std::string body = QueryFullStatsByShortCode(shortCode);
@@ -240,13 +239,9 @@ private:
                 return GenerateNotFound(std::move(req), "The short URL was not found.");
             }
 
-            http::response<http::string_body> res{ http::status::ok, req.version() };
-            res.set(http::field::content_type, "application/json");
-            res.keep_alive(req.keep_alive());
-            res.body() = json::parse(std::move(body)).dump(4);
-            res.prepare_payload();
-
-            return res;
+            return CreateStandardResponse(std::move(req),
+                http::status::ok,
+                json::parse(std::move(body)));
         }
         catch (const PostgreSQLError::PostgreSQLError& e) {
             m_logger -> error("Exception: To process Database: {}", e.what());
@@ -307,13 +302,9 @@ private:
                 return GenerateNotFound(std::move(req), "The short URL was not found.");
             }
 
-            http::response<http::string_body> res{ http::status::ok, req.version() };
-            res.set(http::field::content_type, "application/json");
-            res.keep_alive(req.keep_alive());
-            res.body() = json::parse(std::move(body)).dump(4);
-            res.prepare_payload();
-
-            return res;
+            return CreateStandardResponse(std::move(req), 
+                http::status::ok, 
+                json::parse(std::move(body)));
         }
         catch (const PostgreSQLError::PostgreSQLError& e) {
             m_logger -> error("Exception: To process Database: {}", e.what());
@@ -368,12 +359,7 @@ private:
                 return GenerateNotFound(std::move(req), "The short URL was not found.");
             }
 
-            http::response<http::empty_body> res{ http::status::no_content, req.version() };
-            res.set(http::field::content_type, "application/json");
-            res.keep_alive(req.keep_alive());
-            res.prepare_payload();
-
-            return res;
+            return CreateStandardResponse(std::move(req), http::status::no_content);
         }
         catch (const PostgreSQLError::PostgreSQLError& e) {
             m_logger -> error("Exception: To process Database: {}", e.what());

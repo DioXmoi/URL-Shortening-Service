@@ -188,7 +188,7 @@ private:
     }
 
 
-    // Handle GET starts with /shorten/
+    // Handle GET starts with /shorten/...
     http::response<http::string_body> FindUrlByShortCode(
         http::request<Body, Allocator>&& req, std::string_view shortCode) {
         try {
@@ -216,13 +216,62 @@ private:
         }
     }
 
+
+    std::string QueryFullStatsByShortCode(std::string_view shortCode) {
+        return m_database->Query<std::string>(
+            "UPDATE urls SET accesscount = accesscount + 1 WHERE shortcode = $1 RETURNING to_json(urls.*)",
+            IDatabase::SqlParams{ { "$1", shortCode.data() } },
+            [](const std::vector<std::string>& data) -> std::string {
+                if (data.empty()) {
+                    return { }; // Return an empty string if nothing is found.
+                }
+
+                return std::move(data.front()); // Return JSON if found.
+            });
+    }
+
+    // Handle GET starts with /shorten/.../stats
+    http::response<http::string_body> GetFullStatsByShortCode(
+        http::request<Body, Allocator>&& req, std::string_view shortCode) {
+        try {
+            std::string body = QueryFullStatsByShortCode(shortCode);
+
+            if (body.empty()) {
+                return GenerateNotFound(std::move(req), "The short URL was not found.");
+            }
+
+            http::response<http::string_body> res{ http::status::ok, req.version() };
+            res.set(http::field::content_type, "application/json");
+            res.keep_alive(req.keep_alive());
+            res.body() = json::parse(std::move(body)).dump(4);
+            res.prepare_payload();
+
+            return res;
+        }
+        catch (const PostgreSQLError::PostgreSQLError& e) {
+            m_logger -> error("Exception: To process Database: {}", e.what());
+            return GenerateBadRequest(std::move(req), "Failed to process Database.");
+        }
+        catch (const std::exception& e) {
+            m_logger -> error("Exception: during GET /shorten/ request processing: {}", e.what());
+            return GenerateBadRequest(std::move(req), "Failed to process request.");
+        }
+    }
+
     http::message_generator HandlerMethodGet(http::request<Body, Allocator>&& req) {
         std::string target{ req.target() };
 
-        const std::string pattern{ "/shorten/" };
-        if (target.starts_with(pattern)) {
-            std::string shortCode = target.substr(pattern.size());
+        const std::string patternStart{ "/shorten/" };
+        const std::string patternEnd{ "/stats" };
+        if (target.starts_with(patternStart) && !target.ends_with(patternEnd)) {
+            std::string shortCode = target.substr(patternStart.size());
             return FindUrlByShortCode(std::move(req), shortCode);
+        }
+        else if (target.starts_with(patternStart) && target.ends_with(patternEnd)) {
+            std::string shortCode = target.substr(patternStart.size(), 
+                target.size() - (patternStart.size() + patternEnd.size()));
+
+            return GetFullStatsByShortCode(std::move(req), shortCode);
         }
         else {
             return GenerateNotFound(std::move(req), "Endpoint was not found.");
@@ -242,7 +291,7 @@ private:
             });
     }
 
-    // Handle PUT starts with /shorten/
+    // Handle PUT starts with /shorten/...
     http::message_generator UpdateByShortCode(http::request<Body, Allocator>&& req, std::string_view shortCode) {
         if (req.body().empty()) {
             return GenerateBadRequest(std::move(req), "Empty request body.");
@@ -297,7 +346,6 @@ private:
         }
     }
 
-
     std::string QueryDeleteByShortCode(std::string_view shortCode) {
         return m_database -> Query<std::string>(
             "DELETE FROM urls AS u WHERE u.shortcode = $1 RETURNING to_json(u.id)",
@@ -311,8 +359,7 @@ private:
             });
     }
 
-
-    // Handle DELETE starts with /shorten/
+    // Handle DELETE starts with /shorten/...
     http::message_generator DeleteByShortCode(http::request<Body, Allocator>&& req, std::string_view shortCode) {
         try {
             std::string body = QueryDeleteByShortCode(shortCode);

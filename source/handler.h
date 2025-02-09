@@ -89,14 +89,14 @@ private:
 
     std::string QuerySelectByShortCode(std::string_view shortCode) {
         return m_database -> Query<std::string>(
-            "UPDATE urls SET accesscount = accesscount + 1 WHERE shortcode = $1 RETURNING to_json(urls.*)",
+            "UPDATE urls SET accesscount = accesscount + 1 WHERE shortcode = $1 RETURNING to_json(urls.id, urls.url, urls.shortcode, urls.createdat, urls.updatedat)",
             IDatabase::SqlParams{ { "$1", shortCode.data() } },
             [](const std::vector<std::string>& data) -> std::string {
                 if (data.empty()) {
                     return { }; // Return an empty string if nothing is found.
                 }
 
-                return data.front(); // Return JSON if found.
+                return std::move(data.front()); // Return JSON if found.
             } );
     }
 
@@ -123,7 +123,6 @@ private:
                 });
 
             bool notCreated = body.empty();
-
             http::status status = http::status::created; // Default status is created
 
             if (notCreated) {
@@ -217,14 +216,79 @@ private:
 
         const std::string pattern{ "/shorten/" };
         if (target.starts_with(pattern)) {
-            std::string shortcode = target.substr(pattern.size());
-            return FindUrlByShortCode(std::move(req), shortcode);
+            std::string shortCode = target.substr(pattern.size());
+            return FindUrlByShortCode(std::move(req), shortCode);
         }
         else {
             return GenerateNotFound(std::move(req), "Endpoint was not found.");
         }
     }
 
+
+    std::string QueryUpdateUrlByShortCode(std::string_view url, std::string_view shortCode) {
+        return m_database -> Query<std::string>(
+            "UPDATE urls SET accesscount = accesscount + 1, url = $1 WHERE shortcode = $2 RETURNING to_json(urls.id, urls.url, urls.shortcode, urls.createdat, urls.updatedat)",
+            IDatabase::SqlParams{ { "$1", url.data() }, { "$2", shortCode.data() } },
+            [](const std::vector<std::string>& data) -> std::string {
+                if (data.empty()) {
+                    return { }; // Return an empty string if nothing is found.
+                }
+
+                return std::move(data.front()); // Return JSON if found.
+            });
+    }
+
+    // Handle PUT starts with /shorten/
+    http::message_generator UpdateByShortCode(http::request<Body, Allocator>&& req, std::string_view shortCode) {
+        if (req.body().empty()) {
+            return GenerateBadRequest(std::move(req), "Empty request body.");
+        }
+       
+        try {
+            std::string body = QueryUpdateUrlByShortCode(shortCode);
+
+            if (body.empty()) {
+                return GenerateNotFound(std::move(req), "The short URL was not found.");
+            }
+
+            http::response<http::string_body> res{ http::status::ok, req.version() };
+            res.set(http::field::content_type, "application/json");
+            res.keep_alive(req.keep_alive());
+            res.body() = json::parse(body).dump(4);
+            res.prepare_payload();
+
+            return res;
+        }
+        catch (const PostgreSQLError::PostgreSQLError& e) {
+            m_logger -> error("Exception: To process Database: {}", e.what());
+            return GenerateBadRequest(std::move(req), "Failed to process Database.");
+        }
+        catch (const json::parse_error& e) {
+            m_logger -> error("Exception: JSON parsing error: {}", e.what());
+            return GenerateBadRequest(std::move(req), "Make sure that the request body has the correct JSON format.");
+        }
+        catch (const json::type_error& e) {
+            m_logger -> error("Exception: Data type error: {}", e.what());
+            return GenerateBadRequest(std::move(req), "Check that the value of the 'url' key is a string.");
+        }
+        catch (const std::exception& e) {
+            m_logger -> error("Exception: during PUT /shorten/ request processing: {}", e.what());
+            return GenerateBadRequest(std::move(req), "Failed to process request.");
+        }
+    }
+
+    http::message_generator HandlerMethodPut(http::request<Body, Allocator>&& req) {
+        std::string target{ req.target() };
+
+        const std::string pattern{ "/shorten/" };
+        if (target.starts_with(pattern)) {
+            std::string shortCode = target.substr(pattern.size());
+            return FindUrlByShortCode(std::move(req), shortCode);
+        }
+        else {
+            return GenerateNotFound(std::move(req), "Endpoint was not found.");
+        }
+    }
 
 
 private:

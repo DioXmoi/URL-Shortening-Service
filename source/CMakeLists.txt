@@ -2,8 +2,10 @@ cmake_minimum_required(VERSION 3.15)
 
 project(URLShortener VERSION 1.0)
 
-set(cmake_cxx_standard 20)
-set(cmake_cxx_standard_required TRUE)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 cmake_policy(SET CMP0144 NEW)
 
@@ -56,4 +58,5 @@ target_include_directories(URLShortener PRIVATE
  "${PROJECT_SOURCE_DIR}/database"
  "${Boost_INCLUDE_DIRS}"
  "${PostgreSQL_INCLUDE_DIRS}"
+ "${CMAKE_CURRENT_SOURCE_DIR}"
 )

@@ -82,3 +82,7 @@ ToDo.txt
 # google test
 
 googletest/
+
+# Config file
+
+Config.h.in

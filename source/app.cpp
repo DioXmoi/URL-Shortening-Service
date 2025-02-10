@@ -1,34 +1,31 @@
 #include "server.h"
-
+#include "handler.h"
 #include "postgresql.h"
+#include "random.h"
+#include <iostream>
 
-#include "spdlog/spdlog.h"
-#include "spdlog/async.h" //поддержка асинхронного ведения журнала.
-#include "spdlog/sinks/basic_file_sink.h"
+#include "Config.h"
 
-
-http::message_generator Handler(http::request<http::string_body> req);
 
 int main() {
-
 	std::cout << "url shortening service\n";
-    auto const address = net::ip::make_address("127.0.0.1");
-    auto const port = static_cast<unsigned short>(80);
 
-    Server<http::string_body> server{ address, port  };
+    auto const address = net::ip::make_address(__ADDRESS_SERVER);
+    auto const port = static_cast<unsigned short>(__PORT_SERVER);
 
-    std::function<http::message_generator(http::request<http::string_body>)> func{ Handler };
+    Server<http::string_body> server{ address, port, 2 };
+    std::unique_ptr<IDatabase> database{ std::make_unique<PostgreSQL>(__HOST_DATABASE, __USER_DATABASE, __PASSWORD_DATABASE, __NAME_DATABASE) };
+
+    auto handler = std::make_shared<HttpHandler<http::string_body>>(std::move(database), "server_handler", Random::StringGenerator());
+    using RequestType = http::request<http::string_body, http::basic_fields<std::allocator<char>>>;
+    
+    auto func_lambda = [handler](auto&& req) ->  http::message_generator {
+        return handler -> operator()(std::move(req));
+    };
+
+    std::function<http::message_generator(RequestType&&)> func = func_lambda;
+
     server.Run(func);
 
     return EXIT_SUCCESS;
-}
-
-
-http::message_generator Handler(http::request<http::string_body> req) {
-    http::response<http::string_body> res{ http::status::internal_server_error, req.version() };
-    res.set(http::field::content_type, "text/html");
-    res.keep_alive(req.keep_alive());
-    res.body() = "An error occurred: ' Bib bub'";
-    res.prepare_payload();
-    return res;
 }

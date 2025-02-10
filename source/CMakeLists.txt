@@ -28,6 +28,8 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(spdlog)
 FetchContent_MakeAvailable(nlohmann_json)
 
+configure_file(Config.h.in Config.h)
+
 add_subdirectory(url)
 add_subdirectory(random)
 add_subdirectory(net)
@@ -58,4 +60,5 @@ target_include_directories(URLShortener PRIVATE
  "${PostgreSQL_INCLUDE_DIRS}"
  "${CMAKE_CURRENT_SOURCE_DIR}"
  "${nlohmann_json_SOURCE_DIR}"
+ "${PROJECT_BINARY_DIR}"
 )

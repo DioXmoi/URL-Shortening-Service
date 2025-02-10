@@ -7,10 +7,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-cmake_policy(SET CMP0144 NEW)
-
-find_package(Boost REQUIRED system)
-
 if(NOT Boost_FOUND)
  message(FATAL_ERROR "Boost not found")
 endif()
@@ -23,20 +19,20 @@ FetchContent_Declare(
  GIT_TAG        v1.15.0
 )
 
-FetchContent_MakeAvailable(spdlog)
-
 FetchContent_Declare(
  nlohmann_json
  GIT_REPOSITORY https://github.com/nlohmann/json.git
  GIT_TAG        v3.11.3
 )
 
+FetchContent_MakeAvailable(spdlog)
 FetchContent_MakeAvailable(nlohmann_json)
 
 add_subdirectory(url)
 add_subdirectory(random)
 add_subdirectory(net)
 add_subdirectory(database)
+add_subdirectory(handler)
 
 add_executable(URLShortener app.cpp)
 
@@ -45,6 +41,7 @@ target_link_libraries(URLShortener PRIVATE
  random
  net
  database
+ handler
  Boost::system
  spdlog::spdlog
  nlohmann_json::nlohmann_json
@@ -56,7 +53,9 @@ target_include_directories(URLShortener PRIVATE
  "${PROJECT_SOURCE_DIR}/random"
  "${PROJECT_SOURCE_DIR}/net"
  "${PROJECT_SOURCE_DIR}/database"
+ "${PROJECT_SOURCE_DIR}/handler"
  "${Boost_INCLUDE_DIRS}"
  "${PostgreSQL_INCLUDE_DIRS}"
  "${CMAKE_CURRENT_SOURCE_DIR}"
+ "${nlohmann_json_SOURCE_DIR}"
 )

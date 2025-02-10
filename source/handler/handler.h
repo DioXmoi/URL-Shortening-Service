@@ -9,9 +9,13 @@
 #include "spdlog/spdlog.h"
 #include "spdlog/async.h" 
 #include "spdlog/sinks/basic_file_sink.h"
+#include <boost/beast/http.hpp>
 
 
 using json = nlohmann::json;
+namespace beast = boost::beast;      
+namespace http = beast::http; 
+using LoggerPtr = std::shared_ptr<spdlog::logger>;
 
 template <class Body, class Allocator = http::basic_fields<std::allocator<char>>>
 class HttpHandler {

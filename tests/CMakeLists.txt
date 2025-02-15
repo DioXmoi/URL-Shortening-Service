@@ -35,7 +35,8 @@ configure_file(TestConfig.h.in TestConfig.h)
 add_executable(URLShortenerTests 
  "TestURL.cpp" 
  "TestStringGenerator.cpp"
- "TestHandler.cpp")
+ "TestHandler.cpp" 
+ "TestConnectionConfig.cpp")
 
 target_link_libraries(URLShortenerTests PRIVATE 
  gtest 

@@ -2,7 +2,7 @@
 #include <stdexcept>
 
 
-namespace PostgreSQLError {
+namespace PostgreSQL {
 	class PostgreSQLError : public std::runtime_error {
 	public:
 		PostgreSQLError(const std::string& msg)

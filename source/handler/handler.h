@@ -102,7 +102,7 @@ private:
                 std::move(req), 
                 http::status::no_content);
         }
-        catch (const PostgreSQLError::PostgreSQLError& e) {
+        catch (const PostgreSQL::PostgreSQLError& e) {
             m_logger -> error("Exception: To process Database: {}", e.what());
             return GenerateBadRequest(std::move(req), "Failed to process Database.");
         }
@@ -292,7 +292,7 @@ http::message_generator HttpHandler<Body, Allocator>::CreateShortenUrl(
             status,
             json::parse(std::move(body)));
     }
-    catch (const PostgreSQLError::PostgreSQLError& e) {
+    catch (const PostgreSQL::PostgreSQLError& e) {
         m_logger->error("Exception: To process Database: {}", e.what());
         return GenerateBadRequest(std::move(req), "Failed to process Database.");
     }
@@ -335,7 +335,7 @@ http::message_generator HttpHandler<Body, Allocator>::FindUrlByShortCode(
             http::status::ok,
             json::parse(std::move(body)));
     }
-    catch (const PostgreSQLError::PostgreSQLError& e) {
+    catch (const PostgreSQL::PostgreSQLError& e) {
         m_logger->error("Exception: To process Database: {}", e.what());
         return GenerateBadRequest(std::move(req), "Failed to process Database.");
     }
@@ -373,7 +373,7 @@ http::message_generator HttpHandler<Body, Allocator>::GetFullStatsByShortCode(
             http::status::ok,
             json::parse(std::move(body)));
     }
-    catch (const PostgreSQLError::PostgreSQLError& e) {
+    catch (const PostgreSQL::PostgreSQLError& e) {
         m_logger->error("Exception: To process Database: {}", e.what());
         return GenerateBadRequest(std::move(req), "Failed to process Database.");
     }
@@ -440,7 +440,7 @@ http::message_generator HttpHandler<Body, Allocator>::UpdateByShortCode(
             http::status::ok,
             json::parse(std::move(body)));
     }
-    catch (const PostgreSQLError::PostgreSQLError& e) {
+    catch (const PostgreSQL::PostgreSQLError& e) {
         m_logger->error("Exception: To process Database: {}", e.what());
         return GenerateBadRequest(std::move(req), "Failed to process Database.");
     }

@@ -166,7 +166,7 @@ public:
 
 	inline static std::shared_ptr<HttpHandler<http::string_body>> Handler{
 		std::make_shared<HttpHandler<http::string_body>>(
-				std::make_unique<PostgreSQL>(
+				std::make_unique<PostgreSQL::Database>(
 					__HOST_DATABASE,
 					__USER_DATABASE,
 					__PASSWORD_DATABASE,

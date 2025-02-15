@@ -16,44 +16,33 @@
 #include "postgresqlError.h"
 
 
-class PostgreSQL : public IDatabase {
-public:
-
+namespace PostgreSQL {
     using PGresultPtr = std::unique_ptr<PGresult, decltype(&PQclear)>;
     using PGconnPtr = std::unique_ptr<PGconn, decltype(&PQfinish)>;
 
-    PostgreSQL(std::string_view host,
-        std::string_view user,
-        std::string_view pass,
-        std::string_view dbName,
-        int port = 5432,
-        int countConn = 1);
 
-    void Connect() override;
+    class ConnectionConfig {
+    public:
+        ConnectionConfig(std::string_view host,
+            std::string_view user,
+            std::string_view pass,
+            std::string_view dbName,
+            int port);
 
-    void Disconnect() override;
+        const std::string& GetHost() const { return m_host; }
+        const std::string& GetUser() const { return m_user; }
+        const std::string& GetPassword() const { return m_pass; }
+        const std::string& GetDatabaseName() const { return m_dbName; }
+        const std::string& GetPort() const { return m_port; }
 
-    void Execute(std::string_view query, SqlParams params) override;
+    private:
 
-    std::vector<std::string> ExecuteQuery(std::string_view query, SqlParams params) override;
-
-    void BeginTransaction() override;
-
-    void CommitTransaction() override;
-
-    void RollbackTransaction() override;
-
-    ~PostgreSQL() = default;
-
-private:
-
-    const std::string STR_NULL{ "NULL" };
-    std::vector<int> GetLengthsParams(SqlParams params);
-    std::vector<const char*> GetValuesParams(SqlParams params);
-
-    std::vector<std::string> ReadPostgresResult(PGresultPtr resGuard);
-
-private:
+        const std::string m_host;
+        const std::string m_user;
+        const std::string m_pass;
+        const std::string m_dbName;
+        const std::string m_port;
+    };
 
     class ConnectionPool {
     public:
@@ -85,31 +74,43 @@ private:
         std::condition_variable m_cond{ };
     };
 
-    class ConnectionConfig {
+    class Database : public IDatabase {
     public:
-        ConnectionConfig(std::string_view host,
+
+        Database(std::string_view host,
             std::string_view user,
             std::string_view pass,
             std::string_view dbName,
-            int port);
+            int port = 5432,
+            int countConn = 1);
 
-        const std::string& GetHost() const { return m_host; }
-        const std::string& GetUser() const { return m_user; }
-        const std::string& GetPassword() const { return m_pass; }
-        const std::string& GetDatabaseName() const { return m_dbName; }
-        const std::string& GetPort() const { return m_port; }
+        void Connect() override;
+
+        void Disconnect() override;
+
+        void Execute(std::string_view query, SqlParams params) override;
+
+        std::vector<std::string> ExecuteQuery(std::string_view query, SqlParams params) override;
+
+        void BeginTransaction() override;
+
+        void CommitTransaction() override;
+
+        void RollbackTransaction() override;
+
+        ~Database() = default;
 
     private:
 
-        const std::string m_host;
-        const std::string m_user;
-        const std::string m_pass;
-        const std::string m_dbName;
-        const std::string m_port;
+        const std::string STR_NULL{ "NULL" };
+        std::vector<int> GetLengthsParams(SqlParams params);
+        std::vector<const char*> GetValuesParams(SqlParams params);
+
+        std::vector<std::string> ReadPostgresResult(PGresultPtr resGuard);
+
+    private:
+
+        ConnectionConfig m_config;
+        ConnectionPool m_pool;
     };
-
-private:
-
-    ConnectionConfig m_config;
-    ConnectionPool m_pool;
-};
+}

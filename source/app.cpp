@@ -14,9 +14,17 @@ int main() {
     auto const port = static_cast<unsigned short>(__PORT_SERVER);
 
     Server<http::string_body> server{ address, port, 2 };
-    std::unique_ptr<IDatabase> database{ std::make_unique<PostgreSQL>(__HOST_DATABASE, __USER_DATABASE, __PASSWORD_DATABASE, __NAME_DATABASE) };
+    std::unique_ptr<IDatabase> database{ std::make_unique<PostgreSQL::Database>(
+        __HOST_DATABASE, 
+        __USER_DATABASE, 
+        __PASSWORD_DATABASE, 
+        __NAME_DATABASE) };
 
-    auto handler = std::make_shared<HttpHandler<http::string_body>>(std::move(database), "server_handler", Random::StringGenerator());
+    auto handler = std::make_shared<HttpHandler<http::string_body>>(
+        std::move(database), 
+        "server_handler", 
+        Random::StringGenerator());
+
     using RequestType = http::request<http::string_body, http::basic_fields<std::allocator<char>>>;
     
     auto func_lambda = [handler](auto&& req) ->  http::message_generator {

@@ -259,7 +259,7 @@ TEST_F(HttpHandlerTest, HandlerMethodGET) {
 }
 
 
-// TEST endpoints --- PUT /shorten/..
+// TEST endpoints --- PUT /shorten/..                                    ---  ..  = shortcode
 TEST_F(HttpHandlerTest, HandlerMethodPUT) {
 	std::string errorMessage{ };
 	Random::StringGenerator generator{ 40, 70 };

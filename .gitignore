@@ -86,3 +86,4 @@ googletest/
 # Config file
 
 Config.h.in
+TestConfig.h.in

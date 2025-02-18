@@ -14,11 +14,15 @@ int main() {
     auto const port = static_cast<unsigned short>(__PORT_SERVER);
 
     Server<http::string_body> server{ address, port, 2 };
+
+    PostgreSQL::ConnectionConfig config{ __HOST_DATABASE,
+        __USER_DATABASE,
+        __PASSWORD_DATABASE,
+        __NAME_DATABASE,
+        __PORT_DATABASE };
+
     std::unique_ptr<IDatabase> database{ std::make_unique<PostgreSQL::Database>(
-        __HOST_DATABASE, 
-        __USER_DATABASE, 
-        __PASSWORD_DATABASE, 
-        __NAME_DATABASE) };
+        config, std::make_shared<PostgreSQL::PGClient>()) };
 
     auto handler = std::make_shared<HttpHandler<http::string_body>>(
         std::move(database), 

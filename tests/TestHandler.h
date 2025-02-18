@@ -164,13 +164,12 @@ public:
 
 	}
 
+	inline static PostgreSQL::ConnectionConfig config{ __HOST_DATABASE,
+					  __USER_DATABASE, __PASSWORD_DATABASE, __NAME_DATABASE, __PORT_DATABASE };
+
 	inline static std::shared_ptr<HttpHandler<http::string_body>> Handler{
 		std::make_shared<HttpHandler<http::string_body>>(
-				std::make_unique<PostgreSQL::Database>(
-					__HOST_DATABASE,
-					__USER_DATABASE,
-					__PASSWORD_DATABASE,
-					__NAME_DATABASE),
+				std::make_unique<PostgreSQL::Database>(config, std::make_shared<PostgreSQL::PGClient>()),
 				"tests_handler",
 				Random::StringGenerator()) };
 

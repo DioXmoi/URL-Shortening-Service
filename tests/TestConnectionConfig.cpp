@@ -39,3 +39,23 @@ TEST(TestConnectionConfig, EmptyParams) {
         PostgreSQL::ConnectionConfig portGreaterThanMaxValid("localhost", "user", "pass", "db", max_port + 1);
         }, PostgreSQL::ConnectionConfigError);
 }
+
+TEST(TestConnectionConfig, TestGetConnectionStringParams) {
+    PostgreSQL::ConnectionConfig config("localhost", "user", "pass", "db", 5432);
+
+    auto pair = config.GetConnectionStringParams();
+
+    auto keywords = pair.first;
+    EXPECT_EQ(strcmp(keywords[0], "host"), 0);
+    EXPECT_EQ(strcmp(keywords[1], "user"), 0);
+    EXPECT_EQ(strcmp(keywords[2], "password"), 0);
+    EXPECT_EQ(strcmp(keywords[3], "dbname"), 0);
+    EXPECT_EQ(strcmp(keywords[4], "port"), 0);
+
+    auto values = pair.second;
+    EXPECT_EQ(strcmp(values[0], "localhost"), 0);
+    EXPECT_EQ(strcmp(values[1], "user"), 0);
+    EXPECT_EQ(strcmp(values[2], "pass"), 0);
+    EXPECT_EQ(strcmp(values[3], "db"), 0);
+    EXPECT_EQ(strcmp(values[4], "5432"), 0);
+}

@@ -7,7 +7,7 @@
 
 
 
-TEST_F(UrlTest, test_url_init) {
+TEST_F(UrlTest, Init) {
     std::string uri{ url -> GetUri() };
 
     EXPECT_STREQ(uri.c_str(), "UrlTest.text");
@@ -27,8 +27,7 @@ TEST_F(UrlTest, test_url_init) {
     EXPECT_TRUE(updated_at.time_since_epoch().count() > 0);
 }
 
-
-TEST_F(UrlTest, test_url_set_short_code_updates_time) {
+TEST_F(UrlTest, SetShortCodeUpdatesTime) {
     std::string code{ "code" };
 
     auto beforeUpdate{ url -> GetUpdatedAt() };
@@ -44,15 +43,13 @@ TEST_F(UrlTest, test_url_set_short_code_updates_time) {
     EXPECT_TRUE(afterUpdate > beforeUpdate);
 }
 
-
-TEST_F(UrlTest, test_url_set_short_code_empty) {
+TEST_F(UrlTest, SetShortCodeEmpty) {
     std::string code{ "" };
 
     ASSERT_THROW(url -> SetShortCode(code), std::invalid_argument);
 }
 
-
-TEST_F(UrlTest, test_url_get_access_count) {
+TEST_F(UrlTest, GetAccessCount) {
     int accessCount{ url -> GetAccessCount() };
     EXPECT_EQ(accessCount, 0);
 

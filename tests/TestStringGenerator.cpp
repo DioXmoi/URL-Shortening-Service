@@ -4,31 +4,27 @@
 
 
 
-TEST_F(StringGeneratorTest, constructor_throws_if_len_from_is_zero) {
+TEST_F(StringGeneratorTest, ConstructorThrowsIfLenFromIsZero) {
     ASSERT_THROW(Random::StringGenerator(0, 10), std::invalid_argument);
 }
 
-
-TEST_F(StringGeneratorTest, constructor_throws_if_len_to_is_zero) {
+TEST_F(StringGeneratorTest, ConstructorThrowsIfLenToIsZero) {
     ASSERT_THROW(Random::StringGenerator(5, 0), std::invalid_argument);
 }
 
-
-TEST_F(StringGeneratorTest, constructor_throws_if_chars_is_empty) {
+TEST_F(StringGeneratorTest, ConstructorThrowsIfCharsIsEmpty) {
     std::vector<char> emptyChars{ };
     ASSERT_THROW(Random::StringGenerator(5, 10, emptyChars), std::invalid_argument);
 }
 
-
-TEST_F(StringGeneratorTest, constructor_initializes_correctly) {
+TEST_F(StringGeneratorTest, ConstructorInitializesCorrectly) {
     std::string str{ sg -> Generate() };
 
     EXPECT_GE(str.size(), 5);
     EXPECT_LE(str.size(), 10);
 }
 
-
-TEST_F(StringGeneratorTest, generate_string_contains_only_valid_chars) {
+TEST_F(StringGeneratorTest, GenerateStringContainsOnlyValidChars) {
     std::string str{ sg -> Generate() };
 
     for (char ch : str) {
@@ -39,8 +35,7 @@ TEST_F(StringGeneratorTest, generate_string_contains_only_valid_chars) {
     }
 }
 
-
-TEST_F(StringGeneratorTest, generate_string_with_custom_chars) {
+TEST_F(StringGeneratorTest, GenerateStringWithCustomChars) {
     std::vector<char> customChars = { 'A', 'B', 'C' };
     Random::StringGenerator generator{ 5, 10, customChars };
 

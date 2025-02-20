@@ -42,6 +42,7 @@ add_executable(URLShortenerTests
 target_link_libraries(URLShortenerTests PRIVATE 
  gtest 
  gtest_main 
+ gmock
  Boost::system
  url
  random

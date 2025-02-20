@@ -3,7 +3,7 @@
 #include <postgresql.h>
 
 
-TEST(TestConnectionConfig, ValidParams) {
+TEST(ConnectionConfigTest, ValidParams) {
     PostgreSQL::ConnectionConfig config("localhost", "user", "pass", "db", 5432);
 
     EXPECT_EQ(config.GetHost(), "localhost");
@@ -13,7 +13,7 @@ TEST(TestConnectionConfig, ValidParams) {
     EXPECT_EQ(config.GetPort(), "5432"); // The port is converted to the string.
 }
 
-TEST(TestConnectionConfig, EmptyParams) {
+TEST(ConnectionConfigTest, EmptyParams) {
     EXPECT_THROW({
         PostgreSQL::ConnectionConfig emptyHost("", "user", "pass", "db", 5432);
     }, PostgreSQL::ConnectionConfigError);
@@ -40,7 +40,7 @@ TEST(TestConnectionConfig, EmptyParams) {
         }, PostgreSQL::ConnectionConfigError);
 }
 
-TEST(TestConnectionConfig, TestGetConnectionStringParams) {
+TEST(ConnectionConfigTest, TestGetConnectionStringParams) {
     PostgreSQL::ConnectionConfig config("localhost", "user", "pass", "db", 5432);
 
     auto pair = config.GetConnectionStringParams();

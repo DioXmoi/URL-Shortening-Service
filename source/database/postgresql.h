@@ -133,7 +133,10 @@ namespace PostgreSQL {
 
         void Disconnect();
 
-        int Count() const { return m_connections.size(); }
+        int Count() { 
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return m_connections.size(); 
+        }
 
         PGconnPtr Acquire();
 

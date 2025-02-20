@@ -297,7 +297,7 @@ namespace PostgreSQL {
         for (auto& conn : m_connections) {
             if (conn.get() != nullptr) {
                 m_client -> PQfinish(conn.get());
-                conn.reset();
+                conn.reset(nullptr);
             }
         }
 
@@ -305,9 +305,19 @@ namespace PostgreSQL {
     }
 
     PGconnPtr ConnectionPool::Acquire() {
+        const std::chrono::milliseconds waitInterval{ 100 }; // ToDo: Make it part of the customized interface 
+        const std::chrono::milliseconds maxWaitTime{ 500 };
+        const auto startTime = std::chrono::high_resolution_clock::now();
+
         std::unique_lock<std::mutex> lock{ m_mutex };
         while (m_connections.empty()) {
-            m_cond.wait(lock);
+            auto now = std::chrono::high_resolution_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime);
+            if (elapsed >= maxWaitTime) {
+                throw ConnectionPoolError{ "Timeout: Could not acquire a database connection from the pool within the allowed time." };
+            }
+
+            m_cond.wait_for(lock, waitInterval);
         }
 
         PGconnPtr conn{ std::move(m_connections.back()) };

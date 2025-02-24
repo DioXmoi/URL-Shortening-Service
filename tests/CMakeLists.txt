@@ -37,7 +37,7 @@ add_executable(URLShortenerTests
  "TestStringGenerator.cpp"
  "TestHandler.cpp" 
  "TestConnectionConfig.cpp" 
- "TestConnectionPool.cpp")
+ "TestConnectionPool.cpp" "TestPostgreSQlDatabase.cpp")
 
 target_link_libraries(URLShortenerTests PRIVATE 
  gtest 

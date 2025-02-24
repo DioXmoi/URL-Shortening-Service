@@ -4,7 +4,7 @@
 #include <thread>
 #include "postgresql.h"
 #include "TestConfig.h"
-#include "TestConnectionPool.h"
+#include "MockPGClient.h"
 
 
 using::testing::_;

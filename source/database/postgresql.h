@@ -127,7 +127,7 @@ namespace PostgreSQL {
     public:
 
         ConnectionPool(const ConnectionParams& params,
-            std::shared_ptr<IPGClient>& client, int countConn = 1);
+            std::shared_ptr<IPGClient> client, int countConn = 1);
 
         void Connect(const ConnectionParams& params);
 
@@ -162,7 +162,7 @@ namespace PostgreSQL {
     class Database : public IDatabase {
     public:
         Database(const ConnectionConfig& config,
-            std::shared_ptr<IPGClient>&& client,
+            std::shared_ptr<IPGClient> client,
             int countConn = 1);
 
         void Connect() override;
@@ -179,14 +179,15 @@ namespace PostgreSQL {
 
         void RollbackTransaction() override;
 
-        ~Database() = default;
+        ~Database() {
+            m_client.reset();
+        };
 
     private:
 
         const std::string STR_NULL{ "NULL" };
         std::vector<int> GetLengthsParams(SqlParams params);
         std::vector<const char*> GetValuesParams(SqlParams params);
-
         std::vector<std::string> ReadPostgresResult(PGresultPtr resGuard);
 
     private:

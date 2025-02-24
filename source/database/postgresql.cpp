@@ -46,18 +46,18 @@ namespace PostgreSQL {
 
     Database::Database(
         const ConnectionConfig& config,
-        std::shared_ptr<IPGClient>&& client,
+        std::shared_ptr<IPGClient> client,
         int countConn
     )
         : m_config{ config }
         , m_client{ client }
         , m_pool{ 
             m_config.GetConnectionStringParams(), 
-            m_client,
+            client,
             countConn
           }
     {
-        Connect();
+
     }
 
     void Database::Connect() {
@@ -123,7 +123,7 @@ namespace PostgreSQL {
         std::string msg_error{ m_client -> PQerrorMessage(conn.get()) };
         m_pool.Release(std::move(conn));
         if (m_client -> PQresultStatus(resGuard.get()) != PGRES_COMMAND_OK) {
-            throw ExecuteError(msg_error);
+            throw ExecuteError(std::move(msg_error));
         }
     }
 
@@ -165,7 +165,7 @@ namespace PostgreSQL {
         std::string msg_error{ m_client -> PQerrorMessage(conn.get()) };
         m_pool.Release(std::move(conn));
         if (m_client -> PQresultStatus(resGuard.get()) != PGRES_TUPLES_OK) {
-            throw ExecuteError(msg_error);
+            throw ExecuteError(std::move(msg_error));
         }
 
         return ReadPostgresResult(std::move(resGuard));
@@ -257,7 +257,7 @@ namespace PostgreSQL {
     }
 
     ConnectionPool::ConnectionPool(const ConnectionParams& params, 
-        std::shared_ptr<IPGClient>& client, int countConn
+        std::shared_ptr<IPGClient> client, int countConn
     )
         : m_client{ client }
         , m_countConn{ countConn }
